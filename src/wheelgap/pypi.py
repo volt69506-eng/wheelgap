@@ -11,6 +11,7 @@ import json
 import math
 import os
 import posixpath
+import queue
 import socket
 import ssl
 import string
@@ -23,7 +24,7 @@ import urllib.error
 import urllib.request
 import zlib
 from collections.abc import Callable, Iterator
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import Future, as_completed
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import replace
@@ -1178,6 +1179,78 @@ def reporting_progress(progress: Progress) -> Iterator[None]:
         _progress.reset(token)
 
 
+class DaemonThreadPool:
+    """A fixed pool of daemon worker threads.
+
+    `concurrent.futures.ThreadPoolExecutor` creates non-daemon threads, so a
+    lookup stalled on the network holds the interpreter at exit after Ctrl-C.
+    This pool runs the same map/submit surface on daemon threads, so the
+    process can leave while a fetch is still blocked. See #514.
+    """
+
+    def __init__(self, max_workers=None, thread_name_prefix="wheelgap"):
+        self._max_workers = max_workers or (os.cpu_count() or 1)
+        self._prefix = thread_name_prefix
+        self._tasks = queue.Queue()
+        self._threads = []
+        self._lock = threading.Lock()
+        self._closed = False
+        # A sentinel per worker, so shutdown can stop them without waiting on
+        # a task that never returns.
+        self._stop = object()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.shutdown(wait=False)
+        return False
+
+    def _worker(self):
+        while True:
+            item = self._tasks.get()
+            if item is self._stop:
+                return
+            fn, args, kwargs, future = item
+            if future.set_running_or_notify_cancel():
+                try:
+                    future.set_result(fn(*args, **kwargs))
+                except BaseException as exc:  # noqa: BLE001 - reported to the caller
+                    future.set_exception(exc)
+
+    def _ensure_threads(self):
+        with self._lock:
+            if self._closed:
+                raise RuntimeError("pool is shut down")
+            while len(self._threads) < self._max_workers:
+                thread = threading.Thread(
+                    target=self._worker,
+                    name=f"{self._prefix}-{len(self._threads)}",
+                    daemon=True,
+                )
+                thread.start()
+                self._threads.append(thread)
+
+    def submit(self, fn, /, *args, **kwargs):
+        self._ensure_threads()
+        future = Future()
+        self._tasks.put((fn, args, kwargs, future))
+        return future
+
+    def map(self, fn, *iterables, timeout=None, chunksize=1):
+        futures = [self.submit(fn, *args) for args in zip(*iterables, strict=False)]
+        return [future.result(timeout=timeout) for future in futures]
+
+    def shutdown(self, wait=True, *, cancel_futures=False):
+        with self._lock:
+            self._closed = True
+        for _ in self._threads:
+            self._tasks.put(self._stop)
+        if wait:
+            for thread in self._threads:
+                thread.join()
+
+
 def fill_all(
     packages: list[Package],
     refresh: bool = False,
@@ -1218,7 +1291,7 @@ def fill_all(
     ]
     report = _progress.get()
     if todo:
-        with ThreadPoolExecutor(max_workers=workers) as pool:
+        with DaemonThreadPool(max_workers=workers) as pool:
             if report is None:
                 list(pool.map(fn, todo))
             else:
