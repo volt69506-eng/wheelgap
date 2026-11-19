@@ -5,3 +5,4 @@ These pages check real open-source projects on the platforms their build configu
 - [mitmproxy: runtime dependencies on five build platforms](mitmproxy.md)
 - [FastAPI: CPython 3.15 test dependencies across three platforms](fastapi.md)
 - [Aider: Python 3.14 wheels on Linux and Windows](aider.md)
+- [HERD: a 136-package service platform on ARM, Alpine and Windows on ARM](herd.md)
