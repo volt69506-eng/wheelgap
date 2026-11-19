@@ -122,7 +122,13 @@ def test_check_package(fake_pypi):
     assert data["ok"] is False
     assert data["gaps"] == ["3.13 linux-aarch64"]
     assert data["version"] == "311"
-    assert data["assumes"] == {"glibc": "2.36", "musl": "1.2", "macos": "14.0"}
+    assert data["assumes"] == {
+        "glibc": "2.36",
+        "musl": "1.2",
+        "macos": "14.0",
+        "ios": "13.0",
+        "android_api": "24",
+    }
     assert data["suggest"] == {} and data["last_with_wheel"] == {}
     # The second request reads the older releases for the way out, as --suggest does.
     assert fake_pypi == ["https://pypi.org/pypi/winonly/json"] * 2
@@ -2087,7 +2093,6 @@ def test_diff_lockfiles_malformed_lockfile_is_a_tool_error(fake_pypi, tmp_path):
         ({"old": "{tmp}/old.lock"}, "don't know how to read"),  # the saved copy needs its real name
         ({"targets": ["linux-aarch46"]}, "linux-aarch46"),
         ({"python": "three"}, "can't read Python version"),
-        ({"glibc": "2.28"}, "unknown argument(s): glibc"),
         ({"old": "{tmp}/notes.md"}, "don't know how to read"),
         ({"old": "{tmp}/empty"}, "no lockfile found"),
     ],

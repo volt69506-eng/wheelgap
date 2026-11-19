@@ -64,7 +64,9 @@ from .sources import SourceError
 from .suggest_targets import suggest, to_json
 from .targets import (
     ALIASES,
+    DEFAULT_ANDROID_API,
     DEFAULT_GLIBC,
+    DEFAULT_IOS,
     DEFAULT_MACOS,
     DEFAULT_MUSL,
     DEFAULT_PLATFORMS,
@@ -153,7 +155,18 @@ _VERSION_PROPS = {
     },
     "musl": {"type": "string", "description": f"musl version for musl-* (Alpine) targets. Default: {DEFAULT_MUSL}."},
     "macos": {"type": "string", "description": f"Oldest macOS version to support. Default: {DEFAULT_MACOS}."},
+    "ios": {
+        "type": "string",
+        "description": f"Oldest iOS version to support, for ios-* targets. Default: {DEFAULT_IOS}.",
+    },
+    "android_api": {
+        "type": "string",
+        "description": f"Minimum Android API level to support, for android-* targets. Default: {DEFAULT_ANDROID_API}.",
+    },
 }
+
+# The CLI spells this one with a dash; the MCP key is the Python identifier.
+_CLI_FLAG_OVERRIDES = {"android_api": "android-api"}
 _PYODIDE_LOCK_PROP = {
     "type": "string",
     "description": (
@@ -392,6 +405,7 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "python": _PYTHON_PROP | {"description": _PYTHON_PROP["description"] + " Default: the server's."},
                 "targets": _TARGETS_PROP,
+                **_VERSION_PROPS,
             },
             "required": ["old", "new"],
             "additionalProperties": False,
@@ -483,6 +497,11 @@ def _versions(args: dict[str, Any]) -> dict[str, str]:
         if value is not None and value.strip():
             out[key] = value.strip()
     return out
+
+
+def _version_flags(versions: dict[str, str]) -> list[str]:
+    """Turn version floors into `--name=value` flags, spelling each as the CLI does."""
+    return [f"--{_CLI_FLAG_OVERRIDES.get(key, key)}={value}" for key, value in versions.items()]
 
 
 def _lock_spec(args: dict[str, Any]) -> str:
@@ -629,6 +648,8 @@ def _check_package(args: dict[str, Any]) -> dict[str, Any]:
         "glibc": versions.get("glibc", DEFAULT_GLIBC),
         "musl": versions.get("musl", DEFAULT_MUSL),
         "macos": versions.get("macos", DEFAULT_MACOS),
+        "ios": versions.get("ios", DEFAULT_IOS),
+        "android_api": versions.get("android_api", DEFAULT_ANDROID_API),
     }
     return out
 
@@ -649,7 +670,7 @@ def _check_lockfile(args: dict[str, Any]) -> dict[str, Any]:
         argv.append(f"--environment={environment}")
     argv += [f"--python={p}" for p in _pythons(args)]
     argv += [f"--target={p}" for p in _platforms(args)]
-    argv += [f"--{key}={value}" for key, value in _versions(args).items()]
+    argv += _version_flags(_versions(args))
     if lock_spec := _lock_spec(args):
         argv.append(f"--pyodide-lock={lock_spec}")
     if offline:
@@ -740,7 +761,7 @@ def _check_dist(args: dict[str, Any]) -> dict[str, Any]:
     argv = ["--json", f"--dist={dist}"]
     argv += [f"--python={p}" for p in _pythons(args)]
     argv += [f"--target={p}" for p in _platforms(args)]
-    argv += [f"--{key}={value}" for key, value in _versions(args).items()]
+    argv += _version_flags(_versions(args))
     # The project that built it: the nearest folder above with a pyproject.toml (dist/ beside it, or maturin's
     # target/wheels), else the folder holding it. Never the server's working directory, another project's.
     # abspath collapses ".." (Path.parents works on the text: app/../legacy/dist would pass through app/) and keeps
@@ -762,7 +783,7 @@ def _diff_lockfiles(args: dict[str, Any]) -> dict[str, Any]:
     _check_keys("diff_lockfiles", args)
     paths = [_existing(_string(args, key, required=True) or "") for key in ("old", "new")]
     try:
-        targets = make_targets(_pythons(args) or None, _platforms(args) or None)
+        targets = make_targets(_pythons(args) or None, _platforms(args) or None, **_versions(args))
     except TargetError as e:
         raise ToolError(str(e)) from e
     sides = []
@@ -972,7 +993,13 @@ def _list_targets(args: dict[str, Any]) -> dict[str, Any]:
         "default": list(DEFAULT_PLATFORMS),
         "groups": {"all": NATIVE_PLATFORMS, "everything": EVERY_NATIVE_PLATFORM, "mobile": MOBILE_PLATFORMS},
         "aliases": dict(ALIASES),
-        "defaults": {"glibc": DEFAULT_GLIBC, "musl": DEFAULT_MUSL, "macos": DEFAULT_MACOS},
+        "defaults": {
+            "glibc": DEFAULT_GLIBC,
+            "musl": DEFAULT_MUSL,
+            "macos": DEFAULT_MACOS,
+            "ios": DEFAULT_IOS,
+            "android_api": DEFAULT_ANDROID_API,
+        },
         "server_python": running_python(),
     }
 

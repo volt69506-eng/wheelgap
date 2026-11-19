@@ -118,6 +118,8 @@ for `check_dist` the nearest folder above the dist folder with a
 | `glibc` | string | `2.36` | glibc version for `linux-*` targets, e.g. '2.28' for a RHEL 8 image. |
 | `musl` | string | `1.2` | musl version for `musl-*` (Alpine) targets. |
 | `macos` | string | `14.0` | Oldest macOS version to support. |
+| `ios` | string | `13.0` | Oldest iOS version to support, for `ios-*` targets. |
+| `android_api` | string | `24` | Minimum Android API level to support, for `android-*` targets. |
 | `pyodide_lock` | string | none | Absolute path or https URL of a Pyodide release's `pyodide-lock.json`, so packages that release ships itself count as 'bundled' on pyodide targets for its Python. |
 | `explain` | boolean | `false` | Also return `rejected` (and `via`, always empty for one package) and `issues_url` (the package's issue tracker from PyPI metadata): why each source or missing target can't use the published wheels. |
 | `dependencies` | boolean | `false` | Also check everything the package installs (its dependency tree, resolved from PyPI for each target, as `--deps` does) and return `dependency_gaps`. |
@@ -133,6 +135,8 @@ for `check_dist` the nearest folder above the dist folder with a
 | `glibc` | string | `[tool.wheelgap] glibc` or `distro`, else `2.36` | glibc version for `linux-*` targets, e.g. '2.28' for a RHEL 8 image. |
 | `musl` | string | `[tool.wheelgap] musl` or `distro`, else `1.2` | musl version for `musl-*` (Alpine) targets. |
 | `macos` | string | `[tool.wheelgap] macos`, else `14.0` | Oldest macOS version to support. |
+| `ios` | string | `13.0` | Oldest iOS version to support, for `ios-*` targets. |
+| `android_api` | string | `24` | Minimum Android API level to support, for `android-*` targets. |
 | `pyodide_lock` | string | `[tool.wheelgap] pyodide-lock` (when a pyodide target is checked) | Absolute path or https URL of a Pyodide release's `pyodide-lock.json`. |
 | `offline` | boolean | `[tool.wheelgap] offline`, else `false` | Use only the files recorded in the lockfile; never contact the index. `true` turns it on; `offline = true` in the project can't be turned off from here. |
 | `dependencies` | boolean | `false` | Resolve transitive dependencies of requirements files, `pyproject.toml` and a script's `# /// script` block with `--deps`; each gap gets `via` and `direct`. Refused for lockfiles, offline and another index. |
@@ -156,6 +160,8 @@ for `check_dist` the nearest folder above the dist folder with a
 | `glibc` | string | `[tool.wheelgap] glibc` or `distro`, else `2.36` | glibc version for `linux-*` targets, e.g. '2.28' for a RHEL 8 image. |
 | `musl` | string | `[tool.wheelgap] musl` or `distro`, else `1.2` | musl version for `musl-*` (Alpine) targets. |
 | `macos` | string | `[tool.wheelgap] macos`, else `14.0` | Oldest macOS version to support. |
+| `ios` | string | `13.0` | Oldest iOS version to support, for `ios-*` targets. |
+| `android_api` | string | `24` | Minimum Android API level to support, for `android-*` targets. |
 
 #### `diff_lockfiles`
 
@@ -165,6 +171,11 @@ for `check_dist` the nearest folder above the dist folder with a
 | `new` | string | required | Absolute path to the lockfile (or project directory) after the change. |
 | `python` | string | the server's | Target Python version(s), comma-separated, e.g. '3.13' or '3.12,3.14t' (t = free-threaded); 'next' and 'next-t' mean the newest CPython wheelgap knows. |
 | `targets` | array of strings | the four default platforms | Platforms, e.g. ['linux-aarch64', 'musl-x86_64', 'win-arm64', 'pyodide'], Docker platforms such as 'linux/arm64', or the groups 'all', 'everything' and 'mobile'. `list_targets` gives every name. |
+| `glibc` | string | `2.36` | glibc version for `linux-*` targets, e.g. '2.28' for a RHEL 8 image. |
+| `musl` | string | `1.2` | musl version for `musl-*` (Alpine) targets. |
+| `macos` | string | `14.0` | Oldest macOS version to support. |
+| `ios` | string | `13.0` | Oldest iOS version to support, for `ios-*` targets. |
+| `android_api` | string | `24` | Minimum Android API level to support, for `android-*` targets. |
 
 #### `suggest_targets`
 
