@@ -77,7 +77,9 @@ nav:
       - Overview: case-studies/index.md
       - mitmproxy: case-studies/mitmproxy.md
       - FastAPI: case-studies/fastapi.md
+      - Buzz: case-studies/buzz.md
       - Aider: case-studies/aider.md
+      - pydantic: case-studies/pydantic.md
       - HERD: case-studies/herd.md
   - Integrations:
       - Python API: python-api.md
