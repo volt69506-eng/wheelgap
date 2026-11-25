@@ -2589,6 +2589,8 @@ def _project_script(base: str, texts: list[str], stdin: bool = False, npm_projec
         return next(
             (f"cmake {flag}" for flag in ("-P", "--build", "--install", "--workflow") if flag in texts), "cmake"
         )
+    if base == "bundle" and texts and texts[0] == "config":
+        return None  # bundle config writes settings; it never loads the Gemfile
     if base in _PROBES and base != "cmake" and texts and not all(text in _PROBES[base] for text in texts):
         return base
     return None
